@@ -1,11 +1,23 @@
 ####################
-# Joker Check v 0.1
+# Joker Check v 0.2
 # author : Wobo#1287
 ####################
 
-import sys
-import ac
-import acsys
+import ac, acsys
+import platform, os, sys
+
+if platform.architecture()[0] == "64bit":
+    sysdir = os.path.dirname(__file__)+'/lib/stdlib'
+else:
+    sysdir = os.path.dirname(__file__)+'/lib/stdlib64'
+
+sys.path.insert(0, sysdir)
+os.environ['PATH'] = os.environ['PATH'] + ";."
+
+from lib.sim_info import info
+
+import ctypes
+from ctypes import wintypes
 
 ui_driver_list = 0
 driver_list = []
@@ -13,6 +25,7 @@ track_name = ""
 ppl_on_track = 0
 polygon = []
 timer = 0
+time_left = 0
 
 
 def acMain(ac_version):
@@ -32,12 +45,7 @@ def acMain(ac_version):
 
 
 def acUpdate(deltaT):
-    global ui_driver_list, driver_list, track_name, ppl_on_track, timer, polygon
-
-    pitlane = ac.isCarInPitLane(0)
-    pit = ac.isCarInPit(0)
-    ac.console("Pitlane {}".format(str(pitlane)))
-    ac.console("Pit {}".format(str(pit)))
+    global ui_driver_list, driver_list, track_name, ppl_on_track, timer, polygon, time_left
 
     timer += deltaT
 
@@ -45,9 +53,9 @@ def acUpdate(deltaT):
     if timer > 0.0166:
         timer = 0
         build_driver_list()
-        check_on_track()
-        clear_if_pits()
-
+        # check_on_track()
+        time_left = info.graphics.sessionTimeLeft
+        clear_before_race()
         driver_string = '\n'.join(driver_list)
         ac.setText(ui_driver_list, driver_string)
 
@@ -59,20 +67,23 @@ def inside_polygon(x, y, points):
 
     Reference: http://www.ariel.com.au/a/python-point-int-poly.html
     """
-    n = len(points)
-    inside = False
-    p1x, p1y = points[0]
-    for i in range(1, n + 1):
-        p2x, p2y = points[i % n]
-        if y > min(p1y, p2y):
-            if y <= max(p1y, p2y):
-                if x <= max(p1x, p2x):
-                    if p1y != p2y:
-                        xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
-                    if p1x == p2x or x <= xinters:
-                        inside = not inside
-        p1x, p1y = p2x, p2y
-    return inside
+    if len(points) == 0:
+        return False
+    else:
+        n = len(points)
+        inside = False
+        p1x, p1y = points[0]
+        for i in range(1, n + 1):
+            p2x, p2y = points[i % n]
+            if y > min(p1y, p2y):
+                if y <= max(p1y, p2y):
+                    if x <= max(p1x, p2x):
+                        if p1y != p2y:
+                            xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                        if p1x == p2x or x <= xinters:
+                            inside = not inside
+            p1x, p1y = p2x, p2y
+        return inside
 
 
 def build_driver_list():
@@ -90,26 +101,15 @@ def build_driver_list():
             isConnected = ac.isConnected(i)
             if not inPitbox and isConnected:
                 crds = ac.getCarState(i, acsys.CS.WorldPosition)
-                joker_status = inside_polygon(crds[0], crds[2], polygon)
-                if joker_status:
+                inside_joker = inside_polygon(crds[0], crds[2], polygon)
+                if inside_joker:
                     driver_list.append(driver_name)
 
 
-def check_on_track():
-    """Checks how many cars are outside pits"""
-    global ppl_on_track
-    count = 0
-    car_amount = ac.getCarsCount()
-    for i in range(0, car_amount):
-        if not ac.isCarInPit(i):
-            count += 1
-    ppl_on_track = count
-
-
-def clear_if_pits():
-    """Clears joker list if everyone is in pits"""
-    global ppl_on_track, driver_list
-    if ppl_on_track == 0:
+def clear_before_race():
+    """Clears joker list before race starts"""
+    global time_left, driver_list
+    if time_left >= 0:
         driver_list = []
 
 
@@ -127,10 +127,10 @@ def load_polygon():
     elif track_name == "holjesrx":
         polygon = polygon_holjes
         ac.log("Wczytano polygon Holjes")
-
+    else:
+        polygon = []
 
 def load_track_name():
     """Loads name of track"""
     global track_name
     track_name = ac.getTrackName(0)
-    ac.log("Nazwa trasy odczytana")
