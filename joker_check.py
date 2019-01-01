@@ -26,20 +26,23 @@ ppl_on_track = 0
 polygon = []
 timer = 0
 time_left = 0
-
+session_type = 0
 
 def acMain(ac_version):
-    global ui_driver_list, track_name
+    global ui_driver_list, track_name, session_type
 
     appName = "Joker Check"
     appWindow = ac.newApp(appName)
-    ac.setSize(appWindow, 200, 200)
+    ac.setSize(appWindow, 150, 150)
+    ac.drawBorder(appWindow, 0)
+    ac.setIconPosition(appWindow, 0, -10000)
 
     ui_driver_list = ac.addLabel(appWindow, "Driver list:")
     ac.setPosition(ui_driver_list, 3, 30)
 
     load_track_name()
     load_polygon()
+    load_session_type()
 
     return appName
 
@@ -53,12 +56,11 @@ def acUpdate(deltaT):
     if timer > 0.0166:
         timer = 0
         build_driver_list()
-        # check_on_track()
         time_left = info.graphics.sessionTimeLeft
         clear_before_race()
         driver_string = '\n'.join(driver_list)
         ac.setText(ui_driver_list, driver_string)
-
+        #ac.console(str(ac.getCarState(0, acsys.CS.WorldPosition))) # logs coordinates to console, helpful at setting joker boundaries
 
 def inside_polygon(x, y, points):
     """
@@ -97,20 +99,23 @@ def build_driver_list():
     for i in range(0, car_amount):
         driver_name = ac.getDriverName(i)
         if driver_name not in driver_list:
-            inPitbox = ac.isCarInPit(i)
-            isConnected = ac.isConnected(i)
-            if not inPitbox and isConnected:
+            inpitbox = ac.isCarInPit(i)
+            isconnected = ac.isConnected(i)
+            if not inpitbox and isconnected:
                 crds = ac.getCarState(i, acsys.CS.WorldPosition)
                 inside_joker = inside_polygon(crds[0], crds[2], polygon)
                 if inside_joker:
                     driver_list.append(driver_name)
+                    lap = ac.getCarState(i, acsys.CS.LapCount)
+                    send_chat_message(driver_name, lap)
 
 
 def clear_before_race():
     """Clears joker list before race starts"""
-    global time_left, driver_list
-    if time_left >= 0:
-        driver_list = []
+    global time_left, driver_list, session_type
+    if session_type == 2:
+        if time_left >= 0:
+            driver_list = []
 
 
 def load_polygon():
@@ -118,6 +123,7 @@ def load_polygon():
     global polygon, track_name
 
     polygon_kouvola = [(2, 65), (-38, 36), (-50, 51), (-18, 72)]
+    # polygon_kouvola = [(-84, 91), (-83, 64), (-108, 64), (-108, 91)] - test area nearby S/F
     polygon_holjes = [(-138, -172), (-161, -174), (-158, -146), (-137, -145)]
 
     # Get proper joker area to check
@@ -130,7 +136,19 @@ def load_polygon():
     else:
         polygon = []
 
+
 def load_track_name():
     """Loads name of track"""
     global track_name
     track_name = ac.getTrackName(0)
+
+
+def send_chat_message(drv, lap):
+    """Sends message to chat to indicate that driver completed joker"""
+    ac.sendChatMessage(" | " + drv + " completed joker on lap " + str(lap + 1))
+
+
+def load_session_type():
+    """Loads session type"""
+    global session_type
+    session_type = info.graphics.session
