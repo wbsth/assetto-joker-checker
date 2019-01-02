@@ -39,10 +39,11 @@ def acMain(ac_version):
     ac.drawBorder(appWindow, 0)
     ac.setIconPosition(appWindow, 0, -10000)
 
-    ui_driver_list = ac.addLabel(appWindow, "Driver list:")
+    ui_driver_list = ac.addLabel(appWindow, "Track not supported")
     ac.setPosition(ui_driver_list, 3, 30)
 
     load_track_name()
+    ac.log(track_name)
     load_polygon()
     load_session_type()
 
@@ -122,22 +123,22 @@ def clear_before_race():
 
 
 def load_polygon():
-    """Loads check-area according to track"""
+    """Try to load joker area coordinates from file"""
     global polygon, track_name, track_supported
 
-    polygon_kouvola = [(2, 65), (-38, 36), (-50, 51), (-18, 72)]
-    # polygon_kouvola = [(-84, 91), (-83, 64), (-108, 64), (-108, 91)] # - test area nearby S/F
-    polygon_holjes = [(-138, -172), (-161, -174), (-158, -146), (-137, -145)]
-
-    # Get proper joker area to check
-    if track_name == "kouvolarx":
-        polygon = polygon_kouvola
-        track_supported = 1
-    elif track_name == "holjesrx":
-        polygon = polygon_holjes
-        track_supported = 1
-    else:
+    try:
         polygon = []
+        path = 'apps/python/joker_check/tracks/{}.txt'.format(track_name)
+        with open(path, 'r') as f:
+            temp = f.read().splitlines()
+            for i in temp:
+                tmp_tuple = tuple(map(int, i.split(', ')))
+                polygon.append(tmp_tuple)
+        track_supported = 1
+        ac.log("Track supported")
+    except IOError:
+        track_supported = 0
+        ac.log("Track not supported")
 
 
 def load_track_name():
