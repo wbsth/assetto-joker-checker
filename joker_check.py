@@ -1,7 +1,9 @@
-####################
-# Joker Check v 0.2
+##################################
+# Joker Check v 0.3.1
 # author : Wobo#1287
-####################
+#
+# 0.3 | added logging support
+##################################
 
 import ac, acsys
 import platform, os, sys
@@ -22,11 +24,11 @@ from ctypes import wintypes
 ui_driver_list = 0
 driver_list = []
 track_name = ""
-ppl_on_track = 0
 polygon = []
 timer = 0
 time_left = 0
 session_type = 0
+track_supported = 0
 
 def acMain(ac_version):
     global ui_driver_list, track_name, session_type
@@ -48,19 +50,20 @@ def acMain(ac_version):
 
 
 def acUpdate(deltaT):
-    global ui_driver_list, driver_list, track_name, ppl_on_track, timer, polygon, time_left
+    global ui_driver_list, driver_list, timer, time_left, track_supported
 
     timer += deltaT
 
-    # Limit frequency to 60hz
-    if timer > 0.0166:
-        timer = 0
-        build_driver_list()
-        time_left = info.graphics.sessionTimeLeft
-        clear_before_race()
-        driver_string = '\n'.join(driver_list)
-        ac.setText(ui_driver_list, driver_string)
-        #ac.console(str(ac.getCarState(0, acsys.CS.WorldPosition))) # logs coordinates to console, helpful at setting joker boundaries
+    if track_supported:
+        # Limit frequency to 60hz
+        if timer > 0.0166:
+            timer = 0
+            build_driver_list()
+            time_left = info.graphics.sessionTimeLeft
+            clear_before_race()
+            driver_string = '\n'.join(driver_list)
+            ac.setText(ui_driver_list, driver_string)
+            #ac.console(str(ac.getCarState(0, acsys.CS.WorldPosition))) # logs coordinates to console, helpful at setting joker boundaries
 
 def inside_polygon(x, y, points):
     """
@@ -120,19 +123,19 @@ def clear_before_race():
 
 def load_polygon():
     """Loads check-area according to track"""
-    global polygon, track_name
+    global polygon, track_name, track_supported
 
     polygon_kouvola = [(2, 65), (-38, 36), (-50, 51), (-18, 72)]
-    # polygon_kouvola = [(-84, 91), (-83, 64), (-108, 64), (-108, 91)] - test area nearby S/F
+    # polygon_kouvola = [(-84, 91), (-83, 64), (-108, 64), (-108, 91)] # - test area nearby S/F
     polygon_holjes = [(-138, -172), (-161, -174), (-158, -146), (-137, -145)]
 
     # Get proper joker area to check
     if track_name == "kouvolarx":
         polygon = polygon_kouvola
-        ac.log("Wczytano polygon Kouvola")
+        track_supported = 1
     elif track_name == "holjesrx":
         polygon = polygon_holjes
-        ac.log("Wczytano polygon Holjes")
+        track_supported = 1
     else:
         polygon = []
 
@@ -144,8 +147,9 @@ def load_track_name():
 
 
 def send_chat_message(drv, lap):
-    """Sends message to chat to indicate that driver completed joker"""
+    """Sends message to chat to indicate that driver completed joker, also log to py_log"""
     ac.sendChatMessage(" | " + drv + " completed joker on lap " + str(lap + 1))
+    ac.log("[JOKER CHECKER] " + drv + " completed joker on lap " + str(lap + 1))
 
 
 def load_session_type():
