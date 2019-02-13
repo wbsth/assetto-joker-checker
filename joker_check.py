@@ -1,8 +1,6 @@
 ##################################
-# Joker Check v 0.3.1
+# Joker Check v 0.3.2
 # author : Wobo#1287
-#
-# 0.3 | added logging support
 ##################################
 
 import ac, acsys
@@ -43,7 +41,6 @@ def acMain(ac_version):
     ac.setPosition(ui_driver_list, 3, 30)
 
     load_track_name()
-    ac.log(track_name)
     load_polygon()
     load_session_type()
 
@@ -117,9 +114,8 @@ def build_driver_list():
 def clear_before_race():
     """Clears joker list before race starts"""
     global time_left, driver_list, session_type
-    if session_type == 2:
-        if time_left >= 0:
-            driver_list = []
+    if time_left >= 0:
+        driver_list = []
 
 
 def load_polygon():
@@ -135,10 +131,10 @@ def load_polygon():
                 tmp_tuple = tuple(map(int, i.split(', ')))
                 polygon.append(tmp_tuple)
         track_supported = 1
-        ac.log("Track supported")
+        ac.log("[JOKER CHECK] Track supported")
     except IOError:
         track_supported = 0
-        ac.log("Track not supported")
+        ac.log("[JOKER CHECK] Track not supported")
 
 
 def load_track_name():
@@ -150,7 +146,7 @@ def load_track_name():
 def send_chat_message(drv, lap):
     """Sends message to chat to indicate that driver completed joker, also log to py_log"""
     ac.sendChatMessage(" | " + drv + " completed joker on lap " + str(lap + 1))
-    ac.log("[JOKER CHECKER] " + drv + " completed joker on lap " + str(lap + 1))
+    ac.log("[JOKER CHECK] " + drv + " completed joker on lap " + str(lap + 1))
 
 
 def load_session_type():
